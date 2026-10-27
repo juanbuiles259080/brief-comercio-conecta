@@ -106,10 +106,17 @@ def stop_server(proc: subprocess.Popen, tmp_db: Path) -> None:
         proc.wait(timeout=5)
     except subprocess.TimeoutExpired:
         proc.kill()
-    try:
-        tmp_db.unlink()
-    except FileNotFoundError:
-        pass
+    # En Windows el archivo puede seguir bloqueado unos instantes tras matar
+    # el proceso; se reintenta y, si no se libera, se deja en %TEMP%.
+    for _ in range(10):
+        try:
+            tmp_db.unlink()
+            return
+        except FileNotFoundError:
+            return
+        except PermissionError:
+            time.sleep(0.3)
+    print(f"  Aviso: no se pudo borrar la DB temporal {tmp_db}")
 
 
 # ---------------------------------------------------------------------------
