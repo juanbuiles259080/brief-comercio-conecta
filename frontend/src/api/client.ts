@@ -1,4 +1,6 @@
 import type {
+  Components,
+  Exploration,
   Health,
   Network,
   Product,
@@ -84,5 +86,8 @@ export const api = {
       body: JSON.stringify(data),
     }),
   getNetwork: () => call<Network>('/network'),
+  explore: (id: string, depth: number) =>
+    call<Exploration>(`/explore/${encodeURIComponent(id)}?depth=${depth}`),
+  listComponents: () => call<Components>('/components'),
   health: () => call<Health>('/health'),
 };

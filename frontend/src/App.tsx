@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ComponentsPanel } from './components/ComponentsPanel';
+import { ExplorePanel } from './components/ExplorePanel';
 import { GraphViz } from './components/GraphViz';
 import { NetworkPanel } from './components/NetworkPanel';
 import { ProductsPanel } from './components/ProductsPanel';
@@ -7,6 +9,12 @@ import { RelationsPanel } from './components/RelationsPanel';
 function App() {
   const [refreshTick, setRefreshTick] = useState(0);
   const bump = () => setRefreshTick(t => t + 1);
+  const [exploreOrigin, setExploreOrigin] = useState('');
+
+  const exploreFrom = (id: string) => {
+    setExploreOrigin(id);
+    document.getElementById('explorar')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -20,6 +28,14 @@ function App() {
 
         <div className="space-y-6">
           <GraphViz refreshTick={refreshTick} />
+          <div id="explorar" className="scroll-mt-6">
+            <ExplorePanel
+              refreshTick={refreshTick}
+              origin={exploreOrigin}
+              onOriginChange={setExploreOrigin}
+            />
+          </div>
+          <ComponentsPanel refreshTick={refreshTick} onSelect={exploreFrom} />
           <ProductsPanel refreshTick={refreshTick} onChange={bump} />
           <RelationsPanel refreshTick={refreshTick} onChange={bump} />
           <NetworkPanel refreshTick={refreshTick} />

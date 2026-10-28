@@ -39,6 +39,49 @@ export type RelationIn = {
   weight?: number;
 };
 
+// ---------- Exploración (F2) ----------
+
+export type Reached = {
+  id: string;
+  name: string;
+  level: number;
+  via: string;
+  weight: number;
+};
+
+export type TraceStep = {
+  step: number;
+  node: string;
+  level: number;
+  discovered: string[];
+  already_seen: string[];
+  expanded: boolean;
+};
+
+export type Exploration = {
+  origin: NodeInfo;
+  depth: number;
+  max_depth: number;
+  isolated: boolean;
+  truncated: boolean;
+  reached: Reached[];
+  trace: TraceStep[];
+  message: string;
+};
+
+export type Component = {
+  index: number;
+  size: number;
+  isolated: boolean;
+  products: NodeInfo[];
+};
+
+export type Components = {
+  count: number;
+  components: Component[];
+  message: string;
+};
+
 export type Health = {
   status: string;
   nodes: number;
