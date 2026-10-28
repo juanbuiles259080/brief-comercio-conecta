@@ -53,3 +53,45 @@ class EdgeInfo(BaseModel):
 class NetworkOut(BaseModel):
     nodes: list[NodeInfo]
     edges: list[EdgeInfo]
+
+
+# ---------- Exploración (F2) ----------
+class ReachedOut(BaseModel):
+    id: str
+    name: str
+    level: int
+    via: str
+    weight: float
+
+
+class TraceStepOut(BaseModel):
+    step: int
+    node: str
+    level: int
+    discovered: list[str]
+    already_seen: list[str]
+    expanded: bool
+
+
+class ExploreOut(BaseModel):
+    origin: NodeInfo
+    depth: int
+    max_depth: int
+    isolated: bool
+    truncated: bool
+    reached: list[ReachedOut]
+    trace: list[TraceStepOut]
+    message: str
+
+
+class ComponentOut(BaseModel):
+    index: int
+    size: int
+    isolated: bool
+    products: list[NodeInfo]
+
+
+class ComponentsOut(BaseModel):
+    count: int
+    components: list[ComponentOut]
+    message: str

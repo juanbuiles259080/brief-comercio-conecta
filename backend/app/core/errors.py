@@ -27,6 +27,12 @@ class InvalidWeight(GraphError):
         self.weight = weight
 
 
+class InvalidDepth(GraphError):
+    def __init__(self, depth: object, max_depth: int) -> None:
+        super().__init__(f"Invalid depth: {depth!r} (must be an integer between 1 and {max_depth})")
+        self.depth = depth
+
+
 class SelfLoop(GraphError):
     def __init__(self, node_id: str) -> None:
         super().__init__(f"Self-loop not allowed: {node_id!r} with itself")
