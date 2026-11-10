@@ -4,11 +4,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import explore, network, products, relations
+from app.api import explore, network, products, recommendations, relations
 from app.core.errors import (
     EdgeExists,
     GraphError,
     InvalidDepth,
+    InvalidLimit,
     InvalidWeight,
     NodeExists,
     NodeMissing,
@@ -24,6 +25,7 @@ _STATUS_BY_ERROR: dict[type[GraphError], int] = {
     NodeMissing: 404,
     InvalidWeight: 400,
     InvalidDepth: 400,
+    InvalidLimit: 400,
     SelfLoop: 400,
 }
 
@@ -42,7 +44,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ComercioConecta API",
-    version="0.1.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
@@ -64,6 +66,7 @@ app.include_router(products.router)
 app.include_router(relations.router)
 app.include_router(network.router)
 app.include_router(explore.router)
+app.include_router(recommendations.router)
 
 
 @app.get("/health")

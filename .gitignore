@@ -38,3 +38,9 @@ coverage/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# Archivos empaquetados (no versionar binarios pesados)
+*.zip
+*.tar
+*.tar.gz
+*.rar

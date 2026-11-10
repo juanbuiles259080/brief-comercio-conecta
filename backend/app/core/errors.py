@@ -37,3 +37,9 @@ class SelfLoop(GraphError):
     def __init__(self, node_id: str) -> None:
         super().__init__(f"Self-loop not allowed: {node_id!r} with itself")
         self.node_id = node_id
+
+
+class InvalidLimit(GraphError):
+    def __init__(self, limit: object, max_limit: int) -> None:
+        super().__init__(f"Invalid limit: {limit!r} (must be an integer between 1 and {max_limit})")
+        self.limit = limit

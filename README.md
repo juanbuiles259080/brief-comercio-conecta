@@ -53,7 +53,13 @@ npm run dev
 
 - UI: http://localhost:5173 (si está ocupado, Vite salta a 5174)
 
-El dashboard muestra tres paneles (Productos / Relaciones / Red) que se refrescan en conjunto ante cualquier mutación.
+La interfaz tiene dos secciones pensadas para el cliente y una técnica:
+
+- **Recomendaciones**: el encargado elige un producto por nombre y recibe sugerencias con la razón de cada una. No muestra grafos, ids ni pesos.
+- **Catálogo**: el analista agrega productos y registra compras conjuntas (frecuencia en palabras: Ocasional / Frecuente / Casi siempre juntos).
+- **Vista técnica** (enlace en el pie): grafo, recorrido BFS con traza, grupos y paneles de F1/F2, para el equipo y el pitch.
+
+Cualquier mutación refresca todas las vistas.
 
 ## Endpoints
 
@@ -66,6 +72,10 @@ El dashboard muestra tres paneles (Productos / Relaciones / Red) que se refresca
 | `GET` | `/relations` | — | Lista de relaciones (ordenadas, normalizadas `a<b`) |
 | `POST` | `/relations` | `{a, b, weight?}` | `201` / `404` (nodo falta — detalle dice cuál) / `409` (duplicada) / `422` (peso≤0, self-loop, formato) |
 | `GET` | `/network` | — | `{nodes:[{id,name}], edges:[{a,b,weight}]}` |
+| `GET` | `/explore/{id}` | `depth` (1-3, default 2) | Productos alcanzables con BFS propio + traza (`404` si no existe) |
+| `GET` | `/components` | — | Grupos de productos conectados entre sí |
+| `GET` | `/components/{id}` | — | Grupo al que pertenece el producto (`404` si no existe) |
+| `GET` | `/recommendations/{id}` | `limit` (1-10, default 5) | **F3.** Propuesta comercial con razón por producto (`404` si no existe; producto aislado → `200` con lista vacía y mensaje) |
 
 Documentación interactiva en http://localhost:8000/docs (Swagger auto-generado por FastAPI).
 
@@ -81,6 +91,8 @@ python scripts\acceptance.py
 
 Cubre todo lo que exige la guía: escenario normal, grafo vacío, nodo inexistente, relación inexistente, datos inválidos (duplicados, pesos inválidos, formato). "Ciclo" no aplica porque el grafo es **no dirigido** (ver `docs/decisiones.md`).
 
+Para F2 y F3 hay scripts equivalentes (`python scripts\acceptance_f2.py`, `python scripts\acceptance_f3.py`).
+
 Imprime `ESCENARIO / ESPERADO / OBTENIDO / PASS|FAIL` por caso y termina con `exit(1)` si algo falla.
 
 ## Decisiones clave de diseño
@@ -90,6 +102,7 @@ Resumen (detalle en `docs/decisiones.md`):
 - **Grafo propio** (lista de adyacencia), **no dirigido**, con **pesos opcionales** (default `1.0`, validación `> 0`). NetworkX prohibido para algoritmos (regla de la guía).
 - **Persistencia**: SQLite con el módulo estándar `sqlite3` (sin ORM). El grafo vive en RAM y se **hidrata** al startup. Cada mutación se sincroniza SQL↔RAM.
 - **Normalización** `a < b` en relaciones: evita duplicados simétricos (`(x,y)` vs `(y,x)`) a nivel DB. El grafo guarda la arista en ambos sentidos.
+- **Propuesta comercial (F3)**: primero lo que se compra junto con el producto elegido (1 salto), luego los complementos de complementos (2 saltos) solo si ambos vínculos son frecuentes; se ordena por fuerza y nunca se rellena la lista. Regla completa, límites y sesgos en `docs/decisiones.md`.
 - **Errores de dominio** (`NodeMissing`, `EdgeExists`, etc.) se mapean a HTTP vía un exception handler único → routers sin try/except.
 
 ## Equipo
