@@ -95,3 +95,25 @@ class ComponentsOut(BaseModel):
     count: int
     components: list[ComponentOut]
     message: str
+
+
+# ---------- Propuesta comercial (F3) ----------
+class RecommendationOut(BaseModel):
+    rank: int
+    product: NodeInfo
+    kind: str                 # "direct" | "indirect"
+    strength: float           # fuerza de la relación (ver core/recommend.py)
+    strength_label: str       # "Casi siempre juntos" | "Frecuente" | "Ocasional"
+    support: int              # rutas que respaldan la recomendación
+    via: list[NodeInfo]       # productos puente (vacío si es directo)
+    reason: str               # explicación en lenguaje de negocio
+
+
+class RecommendationsOut(BaseModel):
+    origin: NodeInfo
+    status: str               # "ok" | "isolated"
+    limit: int
+    total_candidates: int
+    recommendations: list[RecommendationOut]
+    message: str
+    rule: str                 # regla aplicada, en lenguaje de negocio

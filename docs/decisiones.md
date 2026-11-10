@@ -90,6 +90,47 @@ Variables de entorno para tests y producción:
 - `COMERCIO_DB_PATH` → override del path de la DB (usado por el script de aceptación).
 - `COMERCIO_SKIP_SEED=1` → desactiva la carga del seed (idem).
 
+## F3 — Propuesta comercial justificable
+
+### Regla de recomendación (`backend/app/core/recommend.py`)
+**Pregunta de negocio**: dado un producto que el cliente ya lleva, ¿qué otros conviene proponerle y por qué?
+
+1. **Candidatos**: productos alcanzables con el BFS propio de F2 hasta **2 saltos**.
+   - 1 salto = *directo*: se compra junto con el producto elegido.
+   - 2 saltos = *indirecto*: se compra junto con un producto que sí acompaña al elegido.
+   - 3 saltos o más **no se recomienda** (en el seed ya cubre 58-79 % del catálogo; deja de ser una relación demostrable).
+2. **Fuerza**: directo = peso de la arista; indirecto = `min(peso origen-puente, peso puente-candidato)` (una cadena es tan fuerte como su eslabón más débil). Con varios puentes se toma el más fuerte; el *respaldo* es cuántos puentes cumplen el umbral del punto 3 (los más débiles se descartan y no se nombran).
+3. **Filtro**: un indirecto entra solo si su fuerza es `>= 1.5` (ambos vínculos "frecuentes" o más). Un directo siempre entra.
+4. **Orden**: directos antes que indirectos; luego mayor fuerza, mayor respaldo y, por último, id (resultado determinista y reproducible a mano).
+5. **Nunca**: recomendar el propio producto, repetir productos, ni rellenar la lista si hay pocos candidatos.
+
+**Razón devuelta por cada producto** (campo `reason`, en lenguaje de negocio): para un directo, "se compra junto con X *casi siempre / con frecuencia / de vez en cuando*"; para un indirecto, nombra los productos puente. La etiqueta de fuerza usa la escala de `seed.sql`: `>= 2.5` Casi siempre juntos, `>= 1.5` Frecuente, el resto Ocasional.
+
+**Por qué directos antes que indirectos** (y no un puntaje único): con un puntaje combinado un indirecto de 1.5 podría superar a un directo de 1.0, y el encargado no podría explicar por qué se propone algo que "no se compra junto" antes de algo que sí. Ordenar por grupo mantiene la explicación en una frase.
+
+**Por qué 1.5 como umbral**: es el primer escalón de "frecuente" en la escala del seed. Con 1.0 ("esperable") casi cualquier par de productos de la red quedaría conectado y la lista dejaría de discriminar. Se justifica con el seed, no está calibrado con datos reales.
+
+**Complejidad**: BFS acotado al radio 2 más el cálculo de puentes sobre los vecinos de los vecinos del origen: `O(sum deg(v)) <= O(E)`.
+
+### Casos borde
+| Caso | Respuesta |
+|---|---|
+| Producto inexistente (o red vacía) | `404`, detalle con el id |
+| Producto aislado | `200`, `status: "isolated"`, lista vacía y mensaje que lo explica |
+| Red escasa (pocos candidatos) | Devuelve solo los que existen y lo dice en `message` |
+| Grupos separados (ej. higiene vs. comestibles) | Nunca se cruza de grupo: no hay camino, no hay recomendación |
+| `limit` fuera de 1-10 o no entero | `422` (Pydantic) |
+
+### Límites y sesgos de la regla (para defender en el pitch)
+- **Sesgo de popularidad**: los pesos vienen de compras conjuntas observadas; los productos que ya se venden juntos se siguen recomendando y los nuevos o poco vendidos quedan fuera (arranque en frío).
+- **Solo co-compra**: no considera precio, margen, inventario, temporada ni sustitutos. Un producto muy relacionado puede ser inconveniente comercialmente.
+- **Simetría**: el grafo es no dirigido; "pan sugiere mantequilla" y "mantequilla sugiere pan" tienen la misma fuerza aunque en la práctica podría no ser así.
+- **Umbral y escala de pesos** definidos a mano sobre datos sintéticos.
+- **Peso desde la interfaz**: el analista elige entre tres frecuencias (1.0 / 2.0 / 3.0); el API admite cualquier peso `> 0`.
+
+### Interfaz orientada al cliente
+Por recomendación del docente, la pantalla principal ya no expone el grafo: el encargado elige un producto **por nombre** y recibe sugerencias con su razón. El catálogo del analista usa frecuencias en palabras en vez de pesos numéricos, y el id técnico se genera a partir del nombre. Grafo, traza BFS y componentes se conservan en una **vista técnica** (enlace en el pie) como evidencia para el pitch y revisión del equipo.
+
 ## Stack
 
 - **Backend**: Python 3.12+ (verificado 3.14.4), FastAPI, `uvicorn[standard]`, Pydantic v2. Solo librerías estándar para el grafo y SQLite.

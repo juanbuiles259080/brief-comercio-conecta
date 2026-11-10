@@ -1,0 +1,113 @@
+
+======================================================================
+  SCRIPT DE ACEPTACION - F3 ComercioConecta
+======================================================================
+  Servidor: http://127.0.0.1:8765  (DB temporal, seed desactivado)
+  Levantando uvicorn...
+  Listo.
+
+======================================================================
+  A) RED VACIA
+======================================================================
+[PASS] #01 GET /recommendations/leche con red vacía
+         Esperado: status=404 (no hay productos), detail menciona 'leche'
+         Obtenido: status=404, detail="Node does not exist: 'leche'"
+
+======================================================================
+  B) ESCENARIO NORMAL: propuesta explicable para 'leche'
+======================================================================
+[PASS] #02 GET /recommendations/leche
+         Esperado: status=200, status='ok', orden [cafe, pan, azucar, mermelada]
+         Obtenido: status=200, body.status='ok', ids=['cafe', 'pan', 'azucar', 'mermelada']
+[PASS] #03 No se recomienda el propio producto ni duplicados
+         Esperado: 'leche' ausente y sin ids repetidos
+         Obtenido: ids=['cafe', 'pan', 'azucar', 'mermelada']
+[PASS] #04 Directos marcados como 'direct', indirectos como 'indirect'
+         Esperado: cafe/pan=direct, azucar/mermelada=indirect
+         Obtenido: {'cafe': 'direct', 'pan': 'direct', 'azucar': 'indirect', 'mermelada': 'indirect'}
+[PASS] #05 Fuerza: directo = peso; indirecto = eslabón más débil
+         Esperado: cafe=3.0, pan=2.5, azucar=2.5 (min 3.0/2.5), mermelada=2.0 (min 2.5/2.0)
+         Obtenido: {'cafe': 3.0, 'pan': 2.5, 'azucar': 2.5, 'mermelada': 2.0}
+[PASS] #06 Etiqueta de fuerza legible para el negocio
+         Esperado: cafe='Casi siempre juntos', mermelada='Frecuente'
+         Obtenido: cafe='Casi siempre juntos', mermelada='Frecuente'
+[PASS] #07 Razón de un indirecto nombra el producto puente
+         Esperado: via=[cafe] y la razón menciona 'Cafe' y 'Leche'
+         Obtenido: via=['cafe'], reason='No se registra junto con Leche, pero sí con Cafe, que acompaña a Leche casi siempre.'
+[PASS] #08 Razón de un directo menciona el producto de origen
+         Esperado: reason menciona 'Leche'
+         Obtenido: reason='Se compra junto con Leche casi siempre.'
+[PASS] #09 La respuesta trae la regla aplicada
+         Esperado: campo 'rule' no vacío
+         Obtenido: rule='Se proponen primero los productos que se compran junto con e'...
+[PASS] #10 limit=2 recorta la lista conservando el orden
+         Esperado: ids=[cafe, pan], total_candidates=4
+         Obtenido: ids=['cafe', 'pan'], total_candidates=4
+
+======================================================================
+  C) FILTRO: un vínculo débil no genera recomendación
+======================================================================
+[PASS] #11 'jugo' (pan-jugo=1.0) NO se recomienda desde 'leche'
+         Esperado: 'jugo' ausente de la lista
+         Obtenido: ids=['cafe', 'pan', 'azucar', 'mermelada']
+[PASS] #12 'jugo' SÍ se recomienda desde 'pan' (relación directa, aunque débil)
+         Esperado: 'jugo' presente como directo con etiqueta 'Ocasional'
+         Obtenido: jugo=direct/Ocasional
+
+======================================================================
+  D) RED ESCASA Y GRUPOS SEPARADOS
+======================================================================
+[PASS] #13 'jabon' solo tiene 'detergente' en su grupo
+         Esperado: ids=[detergente]; nada del grupo de comestibles
+         Obtenido: ids=['detergente']
+[PASS] #14 Con pocos resultados el sistema no rellena y lo dice
+         Esperado: message indica que la lista no se completa con otros
+         Obtenido: message='1 producto con relación demostrable con Jabon. No hay más productos con relación suficiente; la lista no se completa con otros.'
+
+======================================================================
+  E) PRODUCTO AISLADO
+======================================================================
+[PASS] #15 GET /recommendations/sal (sin relaciones)
+         Esperado: status=200, status='isolated', recommendations=[], message explica por qué
+         Obtenido: status=200, body.status='isolated', recs=[], message='Aún no hay compras conjuntas registradas para Sal, así que no se propone ningún producto.'
+
+======================================================================
+  F) PRODUCTO INEXISTENTE
+======================================================================
+[PASS] #16 GET /recommendations/fantasma
+         Esperado: status=404, detail menciona 'fantasma'
+         Obtenido: status=404, detail="Node does not exist: 'fantasma'"
+
+======================================================================
+  G) DATOS INVALIDOS: límite
+======================================================================
+[PASS] #17 GET /recommendations/leche?limit=0 (menor a 1)
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #18 GET /recommendations/leche?limit=11 (mayor al tope 10)
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #19 GET /recommendations/leche?limit=-1 (negativo)
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #20 GET /recommendations/leche?limit=tres (no es entero)
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #21 GET /recommendations/leche?limit=1.5 (decimal)
+         Esperado: status=422
+         Obtenido: status=422
+
+======================================================================
+  H) LA PROPUESTA SE ADAPTA A LOS DATOS (SQL <-> grafo sincronizados)
+======================================================================
+[PASS] #22 'sal' deja de estar aislado al registrar sal-pan (2.0)
+         Esperado: status='ok', ids=[pan, leche, mermelada] (jugo fuera: min 2.0/1.0)
+         Obtenido: status='ok', ids=['pan', 'leche', 'mermelada']
+[PASS] #23 Directos van antes que indirectos aunque el directo sea más débil
+         Esperado: ids=[cafe, pan, te, azucar, mermelada, sal]; 'limon' fuera (puente te=1.0); 'sal' entra como indirecto via pan (min 2.5/2.0)
+         Obtenido: ids=['cafe', 'pan', 'te', 'azucar', 'mermelada', 'sal']
+
+======================================================================
+  RESUMEN
+======================================================================
+  Resultado: 23/23 PASS
