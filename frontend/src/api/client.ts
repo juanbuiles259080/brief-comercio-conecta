@@ -5,6 +5,7 @@ import type {
   Network,
   Product,
   ProductIn,
+  Recommendations,
   Relation,
   RelationIn,
 } from '../types/domain';
@@ -89,5 +90,7 @@ export const api = {
   explore: (id: string, depth: number) =>
     call<Exploration>(`/explore/${encodeURIComponent(id)}?depth=${depth}`),
   listComponents: () => call<Components>('/components'),
+  recommendations: (id: string, limit: number) =>
+    call<Recommendations>(`/recommendations/${encodeURIComponent(id)}?limit=${limit}`),
   health: () => call<Health>('/health'),
 };

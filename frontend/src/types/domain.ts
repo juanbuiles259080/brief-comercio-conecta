@@ -87,3 +87,28 @@ export type Health = {
   nodes: number;
   edges: number;
 };
+
+// ---------- Propuesta comercial (F3) ----------
+
+export type StrengthLabel = 'Casi siempre juntos' | 'Frecuente' | 'Ocasional';
+
+export type Recommendation = {
+  rank: number;
+  product: NodeInfo;
+  kind: 'direct' | 'indirect';
+  strength: number;
+  strength_label: StrengthLabel;
+  support: number;
+  via: NodeInfo[];
+  reason: string;
+};
+
+export type Recommendations = {
+  origin: NodeInfo;
+  status: 'ok' | 'isolated';
+  limit: number;
+  total_candidates: number;
+  recommendations: Recommendation[];
+  message: string;
+  rule: string;
+};
