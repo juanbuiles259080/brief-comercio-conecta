@@ -131,6 +131,39 @@ Variables de entorno para tests y producción:
 ### Interfaz orientada al cliente
 Por recomendación del docente, la pantalla principal ya no expone el grafo: el encargado elige un producto **por nombre** y recibe sugerencias con su razón. El catálogo del analista usa frecuencias en palabras en vez de pesos numéricos, y el id técnico se genera a partir del nombre. Grafo, traza BFS y componentes se conservan en una **vista técnica** (enlace en el pie) como evidencia para el pitch y revisión del equipo.
 
+## F4 — Panel comercial demostrable
+
+### Qué integra
+Una sola aplicación cubre el flujo completo del brief: el **analista** carga productos y compras conjuntas (Catálogo), el **encargado** consulta un producto (Recomendaciones) y recibe una propuesta explicable. La exploración (BFS, grupos) sigue disponible en la vista técnica y es la misma información que alimenta la propuesta: `acceptance_f4.py` comprueba que lo recomendado sale de lo explorado, que los productos puente son vecinos directos y que todo vive en el mismo grupo.
+
+### "Visualizar conexiones de modo útil para explicar una consulta"
+**Decisión**: mapa de la consulta en la pantalla de Recomendaciones, no el grafo completo.
+- Tres columnas: producto elegido → productos que se compran junto con él → productos relacionados (llegan a través de otro producto). Línea continua = compra conjunta; punteada = llega por un intermediario.
+- Al tocar una recomendación (en la tarjeta o en el mapa) se resalta su camino. Un indirecto muestra todos los puentes que lo respaldan.
+- Muestra solo lo que devolvió la propuesta: nombres, sin ids ni pesos ni la palabra "grafo".
+
+**Por qué no el grafo completo en la pantalla principal**: el docente pidió que la interfaz no pareciera "de la tarea" y que el comprador, que no entiende de grafos, vea solo recomendaciones. El grafo completo no explica *esta* consulta (hay decenas de nodos sin relación con ella). Se conserva en la vista técnica como evidencia para el equipo.
+
+**Por qué columnas y no un grafo de fuerzas**: la posición es determinista (misma consulta, mismo dibujo), se lee de izquierda a derecha como una frase y no requiere librería adicional.
+
+**Límites**: el mapa tiene un tope natural de 10 recomendaciones (el máximo del API); la longitud de los nombres se recorta a 22 caracteres (el nombre completo está en la tarjeta y en el tooltip); no dibuja la fuerza de cada vínculo individual, esa información está en la etiqueta de la tarjeta.
+
+### Aceptación de F4 (`backend/scripts/acceptance_f4.py`)
+Los cinco escenarios que exige el brief, sobre el flujo integrado:
+
+| Escenario | Qué se comprueba |
+|---|---|
+| Red vacía | `/network`, `/components`, `/explore` y `/recommendations` responden sin inventar nada |
+| Caso normal | Carga, exploración, propuesta, razón, puentes y grupos consistentes entre sí |
+| Producto aislado | Las tres consultas lo reconocen como aislado, sin recomendaciones |
+| Producto inexistente | `404` con el id en las tres consultas y al registrar una relación |
+| Dato inválido | Nombre vacío, id repetido, pesos inválidos, relación consigo mismo, relación repetida (incluso al revés), profundidad y límite inválidos; la red y la propuesta no cambian |
+
+Se agrega un sexto bloque: los cambios de datos se reflejan en la propuesta y en los grupos.
+
+### Cambio de requisito del docente
+Se registra en `docs/cambio-requisito.md`: solicitud, impacto, ajuste del backlog, decisión y cómo se demuestra la adaptación.
+
 ## Stack
 
 - **Backend**: Python 3.12+ (verificado 3.14.4), FastAPI, `uvicorn[standard]`, Pydantic v2. Solo librerías estándar para el grafo y SQLite.

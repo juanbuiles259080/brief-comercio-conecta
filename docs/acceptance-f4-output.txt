@@ -1,0 +1,159 @@
+
+======================================================================
+  SCRIPT DE ACEPTACION - F4 ComercioConecta
+======================================================================
+  Servidor: http://127.0.0.1:8765  (DB temporal, seed desactivado)
+  Levantando uvicorn...
+  Listo.
+
+======================================================================
+  A) RED VACIA
+======================================================================
+[PASS] #01 GET /network sin datos
+         Esperado: status=200, nodes=[], edges=[]
+         Obtenido: status=200, nodes=0, edges=0
+[PASS] #02 GET /components sin datos
+         Esperado: status=200, count=0, mensaje dice 'Red vacía'
+         Obtenido: status=200, count=0, message='Red vacía: no hay productos cargados.'
+[PASS] #03 GET /explore/leche (explorar con red vacía)
+         Esperado: status=404, detail menciona 'leche' (no inventa resultados)
+         Obtenido: status=404, detail="Node does not exist: 'leche'"
+[PASS] #04 GET /recommendations/leche (recomendar con red vacía)
+         Esperado: status=404, detail menciona 'leche' (no inventa resultados)
+         Obtenido: status=404, detail="Node does not exist: 'leche'"
+
+======================================================================
+  B) CASO NORMAL: el analista carga, el encargado consulta
+======================================================================
+[PASS] #05 El analista registra 9 productos
+         Esperado: 9 respuestas 201
+         Obtenido: 9 respuestas 201
+[PASS] #06 El analista registra 6 compras conjuntas
+         Esperado: 6 respuestas 201
+         Obtenido: 6 respuestas 201
+[PASS] #07 La red refleja lo cargado
+         Esperado: 9 productos y 6 relaciones
+         Obtenido: 9 productos y 6 relaciones
+[PASS] #08 Exploración desde 'leche' (2 saltos)
+         Esperado: cafe y pan en nivel 1; azucar, jugo y mermelada en nivel 2
+         Obtenido: {'azucar': 2, 'cafe': 1, 'jugo': 2, 'mermelada': 2, 'pan': 1}
+[PASS] #09 Propuesta para 'leche'
+         Esperado: [cafe, pan, azucar, mermelada], status='ok'
+         Obtenido: ids=['cafe', 'pan', 'azucar', 'mermelada'], status='ok'
+[PASS] #10 Integración: la propuesta sale de lo explorado
+         Esperado: propuesta incluida en lo alcanzado; la diferencia es solo 'jugo' (vínculo débil)
+         Obtenido: fuera de la propuesta=['jugo']
+[PASS] #11 Integración: todo lo recomendado vive en el mismo grupo que 'leche'
+         Esperado: propuesta + 'leche' incluidas en el grupo; 'jabon' y 'sal' fuera
+         Obtenido: grupo=['azucar', 'cafe', 'jugo', 'leche', 'mermelada', 'pan']
+[PASS] #12 Cada recomendación trae razón; los indirectos nombran su puente
+         Esperado: reason no vacío en todas; via vacío en directos y con datos en indirectos
+         Obtenido: razones=4/4, directos sin puente=True, indirectos con puente=True
+[PASS] #13 Integración: los productos puente son vecinos directos de 'leche'
+         Esperado: todo puente está en el nivel 1 de la exploración
+         Obtenido: puentes=['cafe', 'pan'], nivel 1=['cafe', 'pan']
+[PASS] #14 Grupos: comestibles, aseo y un producto suelto
+         Esperado: 3 grupos de tamaños [1, 2, 6]
+         Obtenido: 3 grupos, tamaños=[1, 2, 6]
+
+======================================================================
+  C) PRODUCTO AISLADO
+======================================================================
+[PASS] #15 GET /recommendations/sal (sin compras)
+         Esperado: status=200, status='isolated', lista vacía, mensaje nombra 'Sal'
+         Obtenido: status=200, body.status='isolated', recs=[], message='Aún no hay compras conjuntas registradas para Sal, así que no se propone ningún producto.'
+[PASS] #16 GET /explore/sal
+         Esperado: status=200, isolated=true, reached=[]
+         Obtenido: status=200, isolated=True, reached=[]
+[PASS] #17 GET /components/sal
+         Esperado: status=200, size=1, isolated=true
+         Obtenido: status=200, size=1, isolated=True
+
+======================================================================
+  D) PRODUCTO INEXISTENTE
+======================================================================
+[PASS] #18 GET /recommendations/fantasma
+         Esperado: status=404, detail menciona 'fantasma'
+         Obtenido: status=404, detail="Node does not exist: 'fantasma'"
+[PASS] #19 GET /explore/fantasma
+         Esperado: status=404, detail menciona 'fantasma'
+         Obtenido: status=404, detail="Node does not exist: 'fantasma'"
+[PASS] #20 GET /components/fantasma
+         Esperado: status=404, detail menciona 'fantasma'
+         Obtenido: status=404, detail="Node does not exist: 'fantasma'"
+[PASS] #21 Registrar una compra conjunta con un producto que no existe
+         Esperado: status=404, detail menciona 'fantasma'
+         Obtenido: status=404, detail="Node does not exist: 'fantasma'"
+
+======================================================================
+  E) DATO INVALIDO (al cargar y al consultar)
+======================================================================
+[PASS] #22 Producto con nombre vacío
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #23 Producto con nombre solo de espacios
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #24 Producto con id repetido
+         Esperado: status=409
+         Obtenido: status=409
+[PASS] #25 Relación con peso 0
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #26 Relación con peso negativo
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #27 Relación con peso que no es número
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #28 Relación de un producto consigo mismo
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #29 Relación repetida (leche, pan)
+         Esperado: status=409
+         Obtenido: status=409
+[PASS] #30 Relación repetida al revés (pan, leche)
+         Esperado: status=409
+         Obtenido: status=409
+[PASS] #31 GET /explore/leche?depth=0 (profundidad menor a 1)
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #32 GET /explore/leche?depth=9 (profundidad sobre el tope)
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #33 GET /explore/leche?depth=dos (profundidad que no es número)
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #34 GET /recommendations/leche?limit=0 (límite menor a 1)
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #35 GET /recommendations/leche?limit=11 (límite sobre el tope)
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #36 GET /recommendations/leche?limit=tres (límite que no es número)
+         Esperado: status=422
+         Obtenido: status=422
+[PASS] #37 Los datos inválidos no alteran la red ni la propuesta
+         Esperado: 9 productos, 6 relaciones y la misma propuesta de antes
+         Obtenido: 9 productos, 6 relaciones, ids=['cafe', 'pan', 'azucar', 'mermelada']
+
+======================================================================
+  F) LOS CAMBIOS DE DATOS SE REFLEJAN EN LA PROPUESTA
+======================================================================
+[PASS] #38 El analista registra sal-pan (2.0)
+         Esperado: status=201
+         Obtenido: status=201
+[PASS] #39 'sal' deja de estar aislado y recibe propuesta
+         Esperado: status='ok', ids=[pan, leche, mermelada]
+         Obtenido: status='ok', ids=['pan', 'leche', 'mermelada']
+[PASS] #40 'leche' ahora también propone 'sal' (indirecto por 'pan')
+         Esperado: ids=[cafe, pan, azucar, mermelada, sal]
+         Obtenido: ids=['cafe', 'pan', 'azucar', 'mermelada', 'sal']
+[PASS] #41 Los grupos se actualizan: 'sal' se une al de comestibles
+         Esperado: 2 grupos de tamaños [2, 7]
+         Obtenido: 2 grupos, tamaños=[2, 7]
+
+======================================================================
+  RESUMEN
+======================================================================
+  Resultado: 41/41 PASS
