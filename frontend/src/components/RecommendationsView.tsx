@@ -3,6 +3,7 @@ import { useNetwork } from '../hooks/useNetwork';
 import { useRecommendations } from '../hooks/useRecommendations';
 import { ProductPicker } from './ProductPicker';
 import { RecommendationCard } from './RecommendationCard';
+import { RecommendationMap } from './RecommendationMap';
 
 type Props = {
   refreshTick: number;
@@ -16,6 +17,7 @@ export function RecommendationsView({ refreshTick, onGoToCatalog }: Props) {
   const { network, loading: loadingCatalog } = useNetwork(refreshTick);
   const [origin, setOrigin] = useState('');
   const [limit, setLimit] = useState(PAGE);
+  const [selected, setSelected] = useState<string | null>(null);
   const { result, loading, error } = useRecommendations(origin, limit, refreshTick);
 
   const products = useMemo(
@@ -39,6 +41,7 @@ export function RecommendationsView({ refreshTick, onGoToCatalog }: Props) {
   function pick(id: string) {
     setOrigin(id);
     setLimit(PAGE);
+    setSelected(null);
   }
 
   const hasMore = !!result && result.status === 'ok' && result.total_candidates > result.recommendations.length && limit < MAX;
@@ -125,9 +128,23 @@ export function RecommendationsView({ refreshTick, onGoToCatalog }: Props) {
               </span>
             </div>
 
+            <div className="mb-6">
+              <RecommendationMap
+                origin={result.origin}
+                recs={result.recommendations}
+                selected={selected}
+                onSelect={id => setSelected(cur => (cur === id ? null : id))}
+              />
+            </div>
+
             <ul className="space-y-4">
               {result.recommendations.map(rec => (
-                <RecommendationCard key={rec.product.id} rec={rec} />
+                <RecommendationCard
+                  key={rec.product.id}
+                  rec={rec}
+                  selected={selected === rec.product.id}
+                  onSelect={id => setSelected(cur => (cur === id ? null : id))}
+                />
               ))}
             </ul>
 

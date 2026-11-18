@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError, api } from '../api/client';
 import { useNetwork } from '../hooks/useNetwork';
-import { slugify } from '../lib/text';
+import { normalize, slugify } from '../lib/text';
 import { ProductPicker } from './ProductPicker';
 
 type Props = {
@@ -21,6 +21,12 @@ const input =
   'w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-base shadow-sm placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-4 focus:ring-emerald-100';
 const primary =
   'rounded-xl bg-emerald-700 px-5 py-2.5 font-medium text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-200 disabled:opacity-50';
+
+/** Mensaje claro según la causa: sin conexión, rechazo del servidor u otro. */
+function describeError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) return `${fallback} (${err.status}: ${err.detail})`;
+  return 'No hay conexión con el servidor. Verifica que el backend esté corriendo en localhost:8000.';
+}
 
 function labelForWeight(w: number): string {
   if (w >= 2.5) return 'Casi siempre juntos';
@@ -60,7 +66,7 @@ export function CatalogView({ refreshTick, onChange }: Props) {
       </header>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <AddProductForm onChange={onChange} />
+        <AddProductForm products={products} onChange={onChange} />
         <AddPurchaseForm products={products} onChange={onChange} />
       </div>
 
@@ -106,7 +112,13 @@ export function CatalogView({ refreshTick, onChange }: Props) {
   );
 }
 
-function AddProductForm({ onChange }: { onChange: () => void }) {
+function AddProductForm({
+  products,
+  onChange,
+}: {
+  products: { id: string; name: string }[];
+  onChange: () => void;
+}) {
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -117,11 +129,20 @@ function AddProductForm({ onChange }: { onChange: () => void }) {
     setError(null);
     setOk(null);
     const clean = name.trim();
-    const id = slugify(clean);
-    if (!id) {
+    const base = slugify(clean);
+    if (!base) {
       setError('Escribe un nombre válido para el producto.');
       return;
     }
+    if (products.some(p => normalize(p.name) === normalize(clean))) {
+      setError('Ya tienes un producto con ese nombre.');
+      return;
+    }
+    // El id técnico se genera solo; si ya existe (otro producto con nombre
+    // parecido, como "Leche" y "Leche entera"), se le agrega un número.
+    const taken = new Set(products.map(p => p.id));
+    let id = base;
+    for (let n = 2; taken.has(id); n++) id = `${base.slice(0, 58)}_${n}`;
     setBusy(true);
     try {
       await api.createProduct({ id, name: clean });
@@ -131,8 +152,8 @@ function AddProductForm({ onChange }: { onChange: () => void }) {
     } catch (err) {
       setError(
         err instanceof ApiError && err.status === 409
-          ? 'Ya existe un producto con ese nombre.'
-          : 'No se pudo agregar el producto. Revisa el nombre e intenta de nuevo.',
+          ? 'Ese producto ya existe. Actualiza la página e intenta de nuevo.'
+          : describeError(err, 'No se pudo agregar el producto'),
       );
     } finally {
       setBusy(false);
@@ -206,7 +227,7 @@ function AddPurchaseForm({
           ? 'Esa compra conjunta ya está registrada.'
           : status === 404
             ? 'Uno de los productos ya no existe en el catálogo.'
-            : 'No se pudo registrar. Revisa los datos e intenta de nuevo.',
+            : describeError(err, 'No se pudo registrar'),
       );
     } finally {
       setBusy(false);

@@ -18,12 +18,33 @@ const LEVELS: Record<StrengthLabel, { bars: number; badge: string; bar: string }
   },
 };
 
-export function RecommendationCard({ rec }: { rec: Recommendation }) {
+type Props = {
+  rec: Recommendation;
+  selected: boolean;
+  onSelect: (id: string) => void;
+};
+
+export function RecommendationCard({ rec, selected, onSelect }: Props) {
   const level = LEVELS[rec.strength_label] ?? LEVELS.Ocasional;
   const direct = rec.kind === 'direct';
 
   return (
-    <li className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+    <li>
+    <div
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      onClick={() => onSelect(rec.product.id)}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(rec.product.id);
+        }
+      }}
+      className={`flex cursor-pointer gap-4 rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md focus:outline-none focus:ring-4 focus:ring-emerald-100 ${
+        selected ? 'border-emerald-600 ring-2 ring-emerald-200' : 'border-slate-200'
+      }`}
+    >
       <div
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white"
         aria-label={`Recomendación número ${rec.rank}`}
@@ -61,6 +82,7 @@ export function RecommendationCard({ rec }: { rec: Recommendation }) {
           </p>
         )}
       </div>
+    </div>
     </li>
   );
 }
