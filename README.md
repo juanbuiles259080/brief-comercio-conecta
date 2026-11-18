@@ -1,7 +1,7 @@
 # ComercioConecta
 
 Microproducto de **red producto↔producto** para una pyme que agrupa tiendas de barrio.
-Analista registra productos y co-compras; encargado consulta la red.
+El analista registra productos y compras conjuntas; el encargado elige un producto y recibe una **propuesta comercial explicable**: qué ofrecerle junto con él y por qué. Si no hay datos suficientes, el sistema lo dice y no inventa recomendaciones.
 
 Proyecto semestral (brief: `07-brief-comercioconecta.md`, reglas: `03-guia-comun-estudiantes.md`).
 
@@ -55,7 +55,7 @@ npm run dev
 
 La interfaz tiene dos secciones pensadas para el cliente y una técnica:
 
-- **Recomendaciones**: el encargado elige un producto por nombre y recibe sugerencias con la razón de cada una. No muestra grafos, ids ni pesos.
+- **Recomendaciones**: el encargado elige un producto por nombre y recibe sugerencias con la razón de cada una, más un **mapa de la consulta** (producto elegido → se compra junto → compra relacionada). Al tocar una recomendación se resalta su camino. No muestra ids ni pesos.
 - **Catálogo**: el analista agrega productos y registra compras conjuntas (frecuencia en palabras: Ocasional / Frecuente / Casi siempre juntos).
 - **Vista técnica** (enlace en el pie): grafo, recorrido BFS con traza, grupos y paneles de F1/F2, para el equipo y el pitch.
 
@@ -81,19 +81,23 @@ Documentación interactiva en http://localhost:8000/docs (Swagger auto-generado 
 
 ## Pruebas de aceptación
 
-Script autosuficiente que levanta su propio `uvicorn` contra una DB temporal y corre **24 asserts**:
+Cada script es autosuficiente: levanta su propio `uvicorn` (puerto 8765) contra una DB temporal y vacía, así que **no hace falta** tener el backend corriendo. Se ejecutan desde `backend` con el entorno virtual activado:
 
-```powershell
-cd backend
-.\.venv\Scripts\Activate.ps1
-python scripts\acceptance.py
+| Feature | Comando | Qué cubre |
+|---|---|---|
+| F1 | `python scripts\acceptance.py` | 24 asserts: escenario normal, grafo vacío, nodo inexistente, relación inexistente, datos inválidos (duplicados, pesos, formato) |
+| F2 | `python scripts\acceptance_f2.py` | Exploración BFS/DFS y grupos conectados |
+| F3 | `python scripts\acceptance_f3.py` | Propuesta comercial: orden, razón, filtro de vínculos débiles, red escasa, grupos separados, aislado, inexistente, límite inválido, cambio de datos (23/23 PASS) |
+| F4 | `python scripts\acceptance_f4.py` | Flujo integrado carga → exploración → propuesta: red vacía, caso normal, producto aislado, producto inexistente, dato inválido y reflejo de cambios; comprueba que los tres módulos son consistentes entre sí |
+
+"Ciclo" no aplica porque el grafo es **no dirigido** (ver `docs/decisiones.md`).
+
+Cada script imprime `ESCENARIO / ESPERADO / OBTENIDO / PASS|FAIL` por caso, cierra con un resumen `N/N PASS` y termina con `exit(1)` si algo falla. Para guardar la salida como evidencia (Símbolo del sistema):
+
 ```
-
-Cubre todo lo que exige la guía: escenario normal, grafo vacío, nodo inexistente, relación inexistente, datos inválidos (duplicados, pesos inválidos, formato). "Ciclo" no aplica porque el grafo es **no dirigido** (ver `docs/decisiones.md`).
-
-Para F2 y F3 hay scripts equivalentes (`python scripts\acceptance_f2.py`, `python scripts\acceptance_f3.py`).
-
-Imprime `ESCENARIO / ESPERADO / OBTENIDO / PASS|FAIL` por caso y termina con `exit(1)` si algo falla.
+set PYTHONIOENCODING=utf-8
+python scripts\acceptance_f4.py > ..\docs\acceptance-f4-output.txt
+```
 
 ## Decisiones clave de diseño
 
@@ -103,6 +107,7 @@ Resumen (detalle en `docs/decisiones.md`):
 - **Persistencia**: SQLite con el módulo estándar `sqlite3` (sin ORM). El grafo vive en RAM y se **hidrata** al startup. Cada mutación se sincroniza SQL↔RAM.
 - **Normalización** `a < b` en relaciones: evita duplicados simétricos (`(x,y)` vs `(y,x)`) a nivel DB. El grafo guarda la arista en ambos sentidos.
 - **Propuesta comercial (F3)**: primero lo que se compra junto con el producto elegido (1 salto), luego los complementos de complementos (2 saltos) solo si ambos vínculos son frecuentes; se ordena por fuerza y nunca se rellena la lista. Regla completa, límites y sesgos en `docs/decisiones.md`.
+- **Panel integrado (F4)**: el dibujo de la red completa queda en la vista técnica; al cliente se le muestra solo el **mapa de la consulta**, con los productos de esa propuesta y su camino (ver `docs/decisiones.md`). El cambio de requisito del docente y su impacto se registran en `docs/cambio-requisito.md`.
 - **Errores de dominio** (`NodeMissing`, `EdgeExists`, etc.) se mapean a HTTP vía un exception handler único → routers sin try/except.
 
 ## Equipo
